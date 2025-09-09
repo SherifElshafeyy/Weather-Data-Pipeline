@@ -1,0 +1,16 @@
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+
+# Airflow metadata
+airflow/
+
+# DBT target
+dbt/target/
+
+# Postgres data
+postgres/
