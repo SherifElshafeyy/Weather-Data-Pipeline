@@ -14,13 +14,17 @@ services:
       - ./postgres/airflow_init.sql:/docker-entrypoint-initdb.d/airflow_init.sql
     networks:
       - my-network
+
   af:
     container_name: airflow_container
     image: apache/airflow:3.0.6
     ports:
       - 8000:8080
     environment:
+      # Airflow DB connection
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@db:5432/airflow_db
+      
+
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./api-request:/opt/airflow/api-request
@@ -49,9 +53,6 @@ services:
       - my-network
     command: run
       
- 
-
 networks:
   my-network:
     driver: bridge
-
