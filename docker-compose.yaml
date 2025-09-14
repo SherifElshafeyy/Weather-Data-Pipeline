@@ -37,7 +37,10 @@ services:
       - my-network
     command: >
       bash -c "airflow db migrate && airflow standalone"
+  
 
+
+  
   dbt:
     container_name: dbt_container
     image: ghcr.io/dbt-labs/dbt-postgres:1.9.latest
@@ -52,7 +55,7 @@ services:
     networks:
       - my-network
     command: run
-      
+        
 networks:
   my-network:
     driver: bridge
