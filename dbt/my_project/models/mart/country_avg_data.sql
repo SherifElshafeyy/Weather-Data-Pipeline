@@ -12,6 +12,7 @@ select
     avg(temperature) as avg_temperature,
     avg(wind_speed) as avg_wind_speed,
     avg(humidity) as avg_humidity,
-    avg(visibility) as avg_visibility
+    avg(visibility) as avg_visibility,
+    avg(pressure) as avg_pressure
 from country_avg_data
 group by country, date(weather_time_local)
