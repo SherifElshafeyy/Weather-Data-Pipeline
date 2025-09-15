@@ -9,12 +9,16 @@ sources:
           - name: id
           - name: city
           - name: country
+          - name: latitude
+          - name: longitude
           - name: temperature
+          - name: feelslike
           - name: weather_description
           - name: wind_speed
           - name: wind_direction
           - name: humidity
           - name: visibility
+          - name: pressure
           - name: time
           - name: inserted_at
           - name: utc_offset
