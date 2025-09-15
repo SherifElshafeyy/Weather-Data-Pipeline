@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: weather_data_cleansed
+    description: Cleansed table which contains weather data
+    columns:
+      
+      - name: id
+        description: Primary key 
+        tests:
+          - unique
+          - not_null
+        
+      - name: city
+        description: Name of city data come from
+        tests:
+          - not_null
+      
+      - name: temperature
+        description: Temperature of city
+        tests:
+          - range_values  # 👈 custom test (see macro below)
+
+      - name: wind_direction
+        description: Wind direction in compass values
+        tests:
+          - accepted_values:
+              values: ['N','NNE','NE','ENE','E','ESE','SE','SSE',
+                       'S','SSW','SW','WSW','W','WNW','NW','NNW']
