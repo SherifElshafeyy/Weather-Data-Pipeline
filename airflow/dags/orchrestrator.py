@@ -8,31 +8,32 @@ from airflow.sensors.python import PythonSensor
 
 # Add path to import your custom script
 sys.path.append('/opt/airflow/api-request')
-from insert_record import main,mock_fetch_data
+from insert_record import main,fetch_data, cleanup_failed_run
 
 
 with DAG(
     dag_id="weather_api_orcherastrator",
     start_date=datetime(2025, 8, 25),
-    schedule=timedelta(minutes=5),
+    schedule=timedelta(minutes=45),
     catchup=False,
     tags=["weather", "dbt", "etl"],
 ) as dag:
 
-    #wait_for_api = PythonSensor(
-    #   task_id="wait_for_api",
-    #    python_callable=is_api_available,
-    #    poke_interval=30,
-    #    timeout=300,
-    #    mode="reschedule"  
-    #)
-
-    ingest_data_task = PythonOperator(
-        task_id="ingest_data_task",
-        python_callable=main
+    wait_for_api = PythonSensor(
+       task_id="wait_for_api",
+        python_callable=is_api_available,
+        poke_interval=30,
+        timeout=300,
+        mode="reschedule"  
     )
 
-    transform_data = DockerOperator(
+    ingest_data = PythonOperator(
+        task_id="ingest_data_task",
+        python_callable=main,
+        op_kwargs={"run_id": "{{ run_id }}"}
+    )
+
+    dbt_transform_data = DockerOperator(
         task_id="transform_data",
         image="ghcr.io/dbt-labs/dbt-postgres:1.9.latest",
         command="run",
@@ -54,5 +55,43 @@ with DAG(
         auto_remove="success"
     )
 
-    # Task dependencies
-    ingest_data_task >> transform_data
+
+    dbt_test = DockerOperator(
+        task_id="dbt_test",
+        image="ghcr.io/dbt-labs/dbt-postgres:1.9.latest",
+        command="test",  # <-- runs dbt tests
+        working_dir="/usr/app",
+        mounts=[
+            Mount(
+                source="/home/shree/repos/weather-data-project/dbt/my_project",
+                target="/usr/app/",
+                type="bind"
+            ),
+            Mount(
+                source="/home/shree/repos/weather-data-project/dbt/profiles.yml",
+                target="/root/.dbt/profiles.yml",
+                type="bind"
+            )
+        ],
+        network_mode="weather-data-project_my-network",
+        docker_url="unix://var/run/docker.sock",
+        auto_remove="success"
+    )
+
+      # Cleanup Task (only runs if dbt_test fails)
+    cleanup_failed = PythonOperator(
+        task_id="cleanup_failed",
+        python_callable=cleanup_failed_run,
+        op_kwargs={"run_id": "{{ run_id }}"},
+        trigger_rule="one_failed"  # Runs only if dbt_test fails
+    )
+
+    # Dependencies
+    ingest_data_task >> transform_data >> dbt_test>>cleanup_failed
+    
+
+
+
+
+
+    
