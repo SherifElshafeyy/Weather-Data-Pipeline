@@ -8,18 +8,22 @@ models:
       - name: id
         description: Primary key 
         tests:
-          - unique
-          - not_null
+          - unique:
+              where: "run_id = '{{ var(\"run_id\") }}'"
+          - not_null:
+              where: "run_id = '{{ var(\"run_id\") }}'"
         
       - name: city
         description: Name of city data come from
         tests:
-          - not_null
+          - not_null:
+              where: "run_id = '{{ var(\"run_id\") }}'"
       
       - name: temperature
         description: Temperature of city
         tests:
-          - range_values  # 👈 custom test (see macro below)
+          - range_values:   # custom test
+              where: "run_id = '{{ var(\"run_id\") }}'"
 
       - name: wind_direction
         description: Wind direction in compass values
@@ -27,3 +31,4 @@ models:
           - accepted_values:
               values: ['N','NNE','NE','ENE','E','ESE','SE','SSE',
                        'S','SSW','SW','WSW','W','WNW','NW','NNW']
+              where: "run_id = '{{ var(\"run_id\") }}'"

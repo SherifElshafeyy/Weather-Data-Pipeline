@@ -8,13 +8,13 @@ from airflow.sensors.python import PythonSensor
 
 # Add path to import your custom script
 sys.path.append('/opt/airflow/api-request')
-from insert_record import main,fetch_data, cleanup_failed_run
+from insert_record import main, cleanup_failed_run,is_api_available
 
 
 with DAG(
     dag_id="weather_api_orcherastrator",
     start_date=datetime(2025, 8, 25),
-    schedule=timedelta(minutes=45),
+    schedule=timedelta(minutes=10),
     catchup=False,
     tags=["weather", "dbt", "etl"],
 ) as dag:
@@ -28,15 +28,15 @@ with DAG(
     )
 
     ingest_data = PythonOperator(
-        task_id="ingest_data_task",
+        task_id="ingest_data",
         python_callable=main,
         op_kwargs={"run_id": "{{ run_id }}"}
     )
 
     dbt_transform_data = DockerOperator(
-        task_id="transform_data",
+        task_id="dbt_transform_data",
         image="ghcr.io/dbt-labs/dbt-postgres:1.9.latest",
-        command="run",
+        command= "run --vars '{run_id: {{ run_id }}}'",
         working_dir="/usr/app",
         mounts=[
             Mount(
@@ -59,7 +59,7 @@ with DAG(
     dbt_test = DockerOperator(
         task_id="dbt_test",
         image="ghcr.io/dbt-labs/dbt-postgres:1.9.latest",
-        command="test",  # <-- runs dbt tests
+        command="test --vars '{run_id: {{ run_id }}}'",  # <-- runs dbt tests
         working_dir="/usr/app",
         mounts=[
             Mount(
@@ -87,7 +87,7 @@ with DAG(
     )
 
     # Dependencies
-    ingest_data_task >> transform_data >> dbt_test>>cleanup_failed
+    wait_for_api>>ingest_data >> dbt_transform_data >> dbt_test>>cleanup_failed
     
 
 

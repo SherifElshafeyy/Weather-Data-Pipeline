@@ -3,7 +3,7 @@ import psycopg2
 from datetime import datetime, timedelta
 
 
-api_key = "d80bcca71c18bd51d7eb896e8b437468"
+api_key = "34a137018d949b4c0372f3b1e578ab34"
 api_url = f"http://api.weatherstack.com/current?access_key={api_key}&query=New York"
 
 #function to test availability of api
@@ -15,24 +15,28 @@ def is_api_available():
     except Exception:
         return False
 
+
 #start fetching data from api
 def fetch_data():
     """Fetch weather data from API and return JSON."""
     print("Fetching weather data from API ...")
     response = requests.get(api_url)
+    if response.status_code != 200:  # fixed indentation
+        raise Exception(f"API request failed with {response.status_code}: {response.text}")
     return response.json()
+
 
 #mock data for testing (dbt_test succeded , there is bad data)(temeprature=-50)
 #def mock_fetch_data():
 #    return {'request': {'type': 'City', 'query': 'New York, United States of America', 'language': 'en', 'unit': 'm'}, 
-#    'location': {'name': 'New York', 'country': 'United States of America', 'region': 'New York', 'lat': '30.714', 'lon': '-50.006', 'timezone_id': 'America/New_York', 'localtime': '2025-09-02 08:37', 'localtime_epoch': 1756802220, 'utc_offset': '-4.0'}, 
-#    'current': {'observation_time': '12:37 PM', 'temperature': -50, 'weather_code': 122, 'weather_icons': ['https://cdn.worldweatheronline.com/images/wsymbols01_png_64/wsymbol_0004_black_low_cloud.png'], 'weather_descriptions': ['Overcast'], 'astro': {'sunrise': '06:24 AM', 'sunset': '07:26 PM', 'moonrise': '04:41 PM', 'moonset': '12:23 AM', 'moon_phase': 'Waxing Gibbous', 'moon_illumination': 66}, 'air_quality': {'co': '412.55', 'no2': '16.65', 'o3': '116', 'so2': '7.4', 'pm2_5': '8.695', 'pm10': '9.065', 'us-epa-index': '1', 'gb-defra-index': '1'}, 'wind_speed': 13, 'wind_degree': 51, 'wind_dir': 'NE', 'pressure': 1023, 'precip': 0, 'humidity': 81, 'cloudcover': 100, 'feelslike': 18, 'uv_index': 1, 'visibility': 16, 'is_day': 'yes'}}
+#    'location': {'name':'New York' , 'country': 'United States of America', 'region': 'New York', 'lat': '30.714', 'lon': '-50.006', 'timezone_id': 'America/New_York', 'localtime': '2025-09-03 08:45', 'localtime_epoch': 1756802220, 'utc_offset': '-4.0'}, 
+#    'current': {'observation_time': '12:37 PM', 'temperature': -50, 'weather_code': 122, 'weather_icons': ['https://cdn.worldweatheronline.com/images/wsymbols01_png_64/wsymbol_0004_black_low_cloud.png'], 'weather_descriptions': ['Overcast'], 'astro': {'sunrise': '06:24 AM', 'sunset': '07:26 PM', 'moonrise': '04:41 PM', 'moonset': '12:23 AM', 'moon_phase': 'Waxing Gibbous', 'moon_illumination': 66}, 'air_quality': {'co': '412.55', 'no2': '16.65', 'o3': '116', 'so2': '7.4', 'pm2_5': '8.695', 'pm10': '9.065', 'us-epa-index': '1', 'gb-defra-index': '1'}, 'wind_speed': 13, 'wind_degree': 51, 'wind_dir': 'sherif', 'pressure': 1023, 'precip': 0, 'humidity': 81, 'cloudcover': 100, 'feelslike': 18, 'uv_index': 1, 'visibility': 16, 'is_day': 'yes'}}
 
 #mock data for testing (dbt_test is failed , data is good)
 #def mock_fetch_data():
 #    return {'request': {'type': 'City', 'query': 'New York, United States of America', 'language': 'en', 'unit': 'm'}, 
 #    'location': {'name': 'New York', 'country': 'United States of America', 'region': 'New York', 'lat': '30.714', 'lon': '-50.006', 'timezone_id': 'America/New_York', 'localtime': '2025-09-02 08:37', 'localtime_epoch': 1756802220, 'utc_offset': '-4.0'}, 
-#    'current': {'observation_time': '12:37 PM', 'temperature': 20, 'weather_code': 122, 'weather_icons': ['https://cdn.worldweatheronline.com/images/wsymbols01_png_64/wsymbol_0004_black_low_cloud.png'], 'weather_descriptions': ['Overcast'], 'astro': {'sunrise': '06:24 AM', 'sunset': '07:26 PM', 'moonrise': '04:41 PM', 'moonset': '12:23 AM', 'moon_phase': 'Waxing Gibbous', 'moon_illumination': 66}, 'air_quality': {'co': '412.55', 'no2': '16.65', 'o3': '116', 'so2': '7.4', 'pm2_5': '8.695', 'pm10': '9.065', 'us-epa-index': '1', 'gb-defra-index': '1'}, 'wind_speed': 13, 'wind_degree': 51, 'wind_dir': 'NE', 'pressure': 1023, 'precip': 0, 'humidity': 81, 'cloudcover': 100, 'feelslike': 18, 'uv_index': 1, 'visibility': 16, 'is_day': 'yes'}}
+#    'current': {'observation_time': '12:37 PM', 'temperature': 25, 'weather_code': 122, 'weather_icons': ['https://cdn.worldweatheronline.com/images/wsymbols01_png_64/wsymbol_0004_black_low_cloud.png'], 'weather_descriptions': ['Overcast'], 'astro': {'sunrise': '06:24 AM', 'sunset': '07:26 PM', 'moonrise': '04:41 PM', 'moonset': '12:23 AM', 'moon_phase': 'Waxing Gibbous', 'moon_illumination': 66}, 'air_quality': {'co': '412.55', 'no2': '16.65', 'o3': '116', 'so2': '7.4', 'pm2_5': '8.695', 'pm10': '9.065', 'us-epa-index': '1', 'gb-defra-index': '1'}, 'wind_speed': 13, 'wind_degree': 51, 'wind_dir': 'NE', 'pressure': 1023, 'precip': 0, 'humidity': 81, 'cloudcover': 100, 'feelslike': 18, 'uv_index': 1, 'visibility': 16, 'is_day': 'yes'}}
 
 #connecting to db
 def connect_to_db():
@@ -109,7 +113,7 @@ def insert_record(conn, data, run_id):
 def main(run_id=None):
     """Orchestration function: fetch, create table, insert record."""
     try:
-        data = mock_fetch_data()
+        data = fetch_data()
         conn = connect_to_db()
         create_table(conn)
         insert_record(conn, data, run_id)
@@ -128,6 +132,7 @@ def cleanup_failed_run(run_id):
         conn = connect_to_db()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM dev.weather_data_cleansed WHERE run_id = %s;", (run_id,))
+        cursor.execute("DELETE FROM dev.raw_weather_data WHERE run_id = %s;", (run_id,))
         conn.commit()
         print(f"Cleaned up cleansed data for failed run_id={run_id}")
     except Exception as e:
