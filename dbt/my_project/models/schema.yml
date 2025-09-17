@@ -12,6 +12,9 @@ models:
               where: "run_id = '{{ var(\"run_id\") }}'"
           - not_null:
               where: "run_id = '{{ var(\"run_id\") }}'"
+          - relationships:
+              to: source('dev', 'raw_weather_data')
+              field: id
         
       - name: city
         description: Name of city data come from
@@ -32,3 +35,18 @@ models:
               values: ['N','NNE','NE','ENE','E','ESE','SE','SSE',
                        'S','SSW','SW','WSW','W','WNW','NW','NNW']
               where: "run_id = '{{ var(\"run_id\") }}'"
+
+
+
+  - name: control_table
+    description: Tracks pipeline runs
+    columns:
+      - name: id
+        description: Foreign key from raw_weather_data
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              to: source('dev', 'raw_weather_data')
+              field: id
+                      
