@@ -1,6 +1,8 @@
+-- depends_on: {{ ref('control_table') }}
+
 {{ config(
     materialized='incremental',
-    unique_key='id'   
+    unique_key='id'
 ) }}
 
 with weather_data_cleansed as (
@@ -31,6 +33,8 @@ from weather_data_cleansed
 where rnk = 1
 
 {% if is_incremental() %}
-  -- Only insert records newer than what we already have
-  and run_id > (select coalesce(max(run_id), '') from {{ this }})
+  and id >= (
+      select coalesce(max(id), 0)
+      from {{ ref('control_table') }}
+  )
 {% endif %}
