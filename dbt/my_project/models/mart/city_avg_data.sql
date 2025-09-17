@@ -1,3 +1,5 @@
+-- depends_on: {{ ref('weather_data_cleansed') }}
+
 {{ config(materialized='table') }}
 
 with city_avg_data as (
