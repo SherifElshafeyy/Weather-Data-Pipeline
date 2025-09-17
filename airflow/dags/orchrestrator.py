@@ -5,10 +5,11 @@ from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount 
 from airflow.sensors.python import PythonSensor
+from airflow.utils.trigger_rule import TriggerRule
 
 # Add path to import your custom script
 sys.path.append('/opt/airflow/api-request')
-from insert_record import main, cleanup_failed_run,is_api_available
+from insert_record import main, cleanup_failed_run,update_run_status,is_api_available
 
 
 with DAG(
@@ -78,7 +79,23 @@ with DAG(
         auto_remove="success"
     )
 
-      # Cleanup Task (only runs if dbt_test fails)
+
+    update_status_valid = PythonOperator(
+    task_id="update_status_valid",
+    python_callable=update_run_status,
+    op_kwargs={"run_id": "{{ run_id }}", "status": "valid"},
+    trigger_rule="all_success"
+    )
+
+    update_status_invalid = PythonOperator(
+    task_id="update_status_invalid",
+    python_callable=update_run_status,
+    op_kwargs={"run_id": "{{ run_id }}", "status": "invalid"},
+    trigger_rule="one_failed"
+    )
+
+
+    # Cleanup Task (only runs if dbt_test fails)
     cleanup_failed = PythonOperator(
         task_id="cleanup_failed",
         python_callable=cleanup_failed_run,
@@ -87,7 +104,13 @@ with DAG(
     )
 
     # Dependencies
-    wait_for_api>>ingest_data >> dbt_transform_data >> dbt_test>>cleanup_failed
+    wait_for_api>>ingest_data >> dbt_transform_data >> dbt_test>> [update_status_valid,update_status_invalid,cleanup_failed]
+
+     
+
+    
+    
+
     
 
 
