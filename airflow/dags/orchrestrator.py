@@ -7,7 +7,7 @@ from docker.types import Mount
 from airflow.sensors.python import PythonSensor
 from airflow.utils.trigger_rule import TriggerRule
 
-# Add path to import your custom script
+
 sys.path.append('/opt/airflow/api-request')
 from insert_record import main, cleanup_failed_run,update_run_status,is_api_available
 
@@ -20,6 +20,7 @@ with DAG(
     tags=["weather", "dbt", "etl"],
 ) as dag:
 
+    #wait for api response task
     wait_for_api = PythonSensor(
        task_id="wait_for_api",
         python_callable=is_api_available,
@@ -27,13 +28,13 @@ with DAG(
         timeout=300,
         mode="reschedule"  
     )
-
+    #start ingesting data
     ingest_data = PythonOperator(
         task_id="ingest_data",
         python_callable=main,
         op_kwargs={"run_id": "{{ run_id }}"}
     )
-
+    #dbt transform data
     dbt_transform_data = DockerOperator(
         task_id="dbt_transform_data",
         image="ghcr.io/dbt-labs/dbt-postgres:1.9.latest",
@@ -56,7 +57,7 @@ with DAG(
         auto_remove="success"
     )
 
-
+    #dbt test data
     dbt_test = DockerOperator(
         task_id="dbt_test",
         image="ghcr.io/dbt-labs/dbt-postgres:1.9.latest",
@@ -79,14 +80,14 @@ with DAG(
         auto_remove="success"
     )
 
-
+    #update status of valif recotds in control_table
     update_status_valid = PythonOperator(
     task_id="update_status_valid",
     python_callable=update_run_status,
     op_kwargs={"run_id": "{{ run_id }}", "status": "valid"},
     trigger_rule="all_success"
     )
-
+    #update status of invalid record in control_table
     update_status_invalid = PythonOperator(
     task_id="update_status_invalid",
     python_callable=update_run_status,
@@ -95,7 +96,7 @@ with DAG(
     )
 
 
-    # Cleanup Task (only runs if dbt_test fails)
+    # Cleanup Task (only runs if dbt_test fails) from weather_cleansed_table
     cleanup_failed = PythonOperator(
         task_id="cleanup_failed",
         python_callable=cleanup_failed_run,
