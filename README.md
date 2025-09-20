@@ -1,305 +1,342 @@
 # Weather Data Pipeline
 
-A comprehensive **ETL data pipeline** that extracts weather data from the WeatherStack API, processes it through PostgreSQL, and transforms it using dbt for analytical reporting. The entire pipeline is orchestrated with Apache Airflow and containerized using Docker.
+A robust, automated ETL pipeline that extracts weather data from the WeatherStack API, transforms it using dbt, and loads it into PostgreSQL. The entire pipeline is orchestrated with Apache Airflow and containerized with Docker.
 
-## 🏗️ Architecture Overview
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   WeatherStack  │    │   PostgreSQL    │    │       dbt       │    │    Reports      │
-│      API        │───▶│   Raw Data      │───▶│  Transformations│───▶│   Analytics     │
-│                 │    │                 │    │                 │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
-         ▲                        ▲                        ▲                        ▲
-         │                        │                        │                        │
-    ┌─────────────────────────────────────────────────────────────────────────────────────┐
-    │                           Apache Airflow Orchestration                              │
-    │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
-    │  │API Sensor   │ │Data Ingestion│ │dbt Transform│ │  dbt Tests  │ │  Cleanup    │ │
-    │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ │
-    └─────────────────────────────────────────────────────────────────────────────────────┘
-                                    Docker Containerization
-```
 
-## 🛠️ Technology Stack
+## Architecture Overview
 
-- **Orchestration**: Apache Airflow
-- **Database**: PostgreSQL 14.19
-- **Data Transformation**: dbt (Data Build Tool)
-- **API**: WeatherStack API
-- **Languages**: Python, SQL
-- **Containerization**: Docker & Docker Compose
-- **Environment**: Linux (WSL)
+![Pipeline Architecture](images/01_weather_data_pipeline_graph.jpg)
+![airflow Architecture](images/02_weather_data_main_airflow_graph.png)
 
-## 📁 Project Structure
+
+## Technologies Used
+
+- **🐍 Python**: Data extraction and API integration
+- **🐘 PostgreSQL**: Primary data warehouse
+- **🔄 dbt**: Data transformation and testing framework
+- **🌊 Apache Airflow**: Workflow orchestration and scheduling
+- **🐳 Docker**: Containerization and service management
+- **📊 WeatherStack API**: Real-time weather data source
+
+## Pipeline Workflow
+
+### 1. Data Extraction
+- **API Monitoring**: PythonSensor continuously monitors WeatherStack API availability
+- **Data Fetching**: Retrieves real-time weather data for New York City
+- **Data Ingestion**: Stores raw data in PostgreSQL with unique run IDs for tracking
+
+### 2. Data Transformation (dbt)
+- **Incremental Processing**: Efficiently handles new data using incremental materialization
+- **Data Cleansing**: Removes duplicates and handles timezone conversions
+- **Aggregations**: Creates city-level and country-level daily averages
+
+### 3. Data Quality Testing
+- **Schema Validation**: Ensures data types and constraints
+- **Custom Tests**: Temperature range validation (-20°C to 80°C)
+- **Reference Integrity**: Validates relationships between tables
+- **Wind Direction Validation**: Ensures compass values are valid
+
+### 4. Error Handling & Monitoring
+- **Status Tracking**: Control table monitors pipeline run success/failure
+- **Automatic Cleanup**: Failed runs trigger data cleanup procedures
+- **Run Isolation**: Each pipeline run is tracked with unique identifiers
+
+## Project Structure
 
 ```
 weather-data-project/
+├── api-request/
+│   └── insert_record.py          # Data extraction and database operations
 ├── airflow/
 │   └── dags/
-│       └── orchestrator.py          # Main Airflow DAG
-├── api-request/
-│   └── insert_record.py             # Weather data ingestion logic
+│       └── orchestrator.py       # Main DAG definition
 ├── dbt/
 │   ├── my_project/
-│   │   ├── dbt_project.yml          # dbt project configuration
 │   │   ├── models/
 │   │   │   ├── fact/
 │   │   │   │   └── weather_data_cleansed.sql
-│   │   │   └── mart/
-│   │   │       ├── city_avg_data.sql
-│   │   │       └── country_avg_data.sql
-│   │   ├── sources/
-│   │   │   ├── sources.yml          # Source table definitions
-│   │   │   └── schema.yml           # Model tests & documentation
-│   │   └── macros/
-│   │       └── range_values.sql     # Custom dbt test macro
-│   └── profiles.yml                 # dbt database connections
+│   │   │   ├── mart/
+│   │   │   │   ├── city_avg_data.sql
+│   │   │   │   └── country_avg.sql
+│   │   │   └── sources/
+│   │   │       ├── control_table.sql
+│   │   │       └── schema.yml
+│   │   ├── macros/
+│   │   │   └── range_values.sql   # Custom test macro
+│   │   └── dbt_project.yml
+│   └── profiles.yml
 ├── postgres/
-│   ├── data/                        # PostgreSQL data volume
-│   └── airflow_init.sql            # Database initialization
-└── docker-compose.yml              # Container orchestration
+│   ├── data/                      # PostgreSQL data directory
+│   └── airflow_init.sql          # Database initialization
+├── docker-compose.yml
+└── README.md
 ```
 
-## 🚀 Features
+## Data Flow & Quality Management
 
-### **Data Pipeline Capabilities**
-- **Real-time Weather Data**: Fetches current weather data from WeatherStack API for New York
-- **Data Quality Assurance**: Implements dbt tests for data validation and quality checks
-- **Automated Scheduling**: Runs every 45 minutes using Airflow scheduler
-- **Error Handling**: Automatic cleanup of invalid data when tests fail
-- **Deduplication**: Removes duplicate records using row numbering
-- **Time Zone Handling**: Converts UTC timestamps to local time zones
+### Data Storage Strategy
 
-### **Data Transformations**
-- **Fact Layer**: Cleansed weather data with deduplication and timezone conversion
-- **Mart Layer**: Aggregated daily averages by city and country
-- **Custom Tests**: Temperature range validation using custom dbt macros
-- **Data Lineage**: Full traceability through dbt's lineage graphs
+The pipeline implements a **dual-layer data storage approach** that ensures complete data traceability while maintaining quality standards:
 
-### **Infrastructure**
-- **Containerized Architecture**: All components run in Docker containers
-- **Scalable Design**: Easy to extend for multiple cities or data sources
-- **Network Isolation**: Custom Docker network for secure communication
-- **Persistent Storage**: PostgreSQL data persistence across container restarts
+#### 1. Raw Data Layer (`raw_weather_data`)
+- **Purpose**: Stores ALL data extracted from the WeatherStack API
+- **Data Quality**: Contains both valid AND invalid records
+- **Retention**: Complete historical record of every API call
+- **Usage**: Serves as the immutable source of truth for auditing and reprocessing
 
-## 📋 Prerequisites
+#### 2. Cleansed Data Layer (`weather_data_cleansed`)  
+- **Purpose**: Contains ONLY validated, high-quality data
+- **Data Quality**: Records that pass all dbt tests
+- **Population**: Fed from `raw_weather_data` through transformation pipeline
+- **Usage**: Source for analytics, reporting, and downstream data marts
 
+### Data Quality Control Flow
+
+```
+API Data → raw_weather_data (ALL records stored)
+                ↓
+        dbt Transformation
+                ↓
+        dbt Quality Tests
+                ↓
+    PASS → weather_data_cleansed (valid data only)
+    FAIL → control_table status = 'invalid' + cleanup
+```
+
+## Control Table: Complete Pipeline Tracking
+
+The `control_table` provides comprehensive tracking for every single record processed through the pipeline:
+
+### Status Lifecycle
+```
+1. Raw data inserted → control_table entry created with status='pending'
+2. dbt transformation runs → data moved to weather_data_cleansed
+3. dbt tests execute:
+   ✅ Tests PASS → status updated to 'valid'
+   ❌ Tests FAIL → status updated to 'invalid' + data cleanup
+```
+
+### Status Meanings
+- **`pending`**: Record inserted but not yet processed through quality checks
+- **`valid`**: Record passed all data quality tests and exists in cleansed table
+- **`invalid`**: Record failed quality tests and was removed from cleansed table
+
+### Complete Audit Trail
+Every record can be traced through the entire pipeline:
+
+```sql
+-- View complete status for all records
+SELECT 
+    r.id,
+    r.city,
+    r.temperature,
+    r.run_id,
+    c.status,
+    CASE 
+        WHEN w.id IS NOT NULL THEN 'Present in cleansed table'
+        ELSE 'Not in cleansed table'
+    END as cleansed_status
+FROM dev.raw_weather_data r
+LEFT JOIN dev.control_table c ON r.id = c.id
+LEFT JOIN dev.weather_data_cleansed w ON r.id = w.id
+ORDER BY r.inserted_at DESC;
+```
+
+## Data Models
+
+### Source Layer (`dev` schema)
+- **raw_weather_data**: Raw API data - ALL records (valid + invalid)
+- **control_table**: Pipeline run tracking and status management for every record
+
+### Fact Layer  
+- **weather_data_cleansed**: ONLY validated, high-quality data that passed all tests
+
+### Mart Layer
+- **city_avg_data**: Daily aggregated weather metrics by city (from validated data only)
+- **country_avg**: Daily aggregated weather metrics by country (from validated data only)
+
+## Database Schema & Results
+
+### Raw Weather Data
+```sql
+raw_weather_data (
+    id SERIAL PRIMARY KEY,
+    city TEXT,
+    country TEXT,
+    region TEXT,
+    latitude FLOAT,
+    longitude FLOAT,
+    temperature FLOAT,
+    feelslike FLOAT,
+    weather_description TEXT,
+    wind_speed FLOAT,
+    wind_direction TEXT,
+    humidity FLOAT,
+    visibility FLOAT,
+    pressure FLOAT,
+    time TIMESTAMP,
+    inserted_at TIMESTAMP,
+    utc_offset TEXT,
+    run_id TEXT
+)
+```
+
+### Control Table
+```sql
+control_table (
+    id INTEGER,
+    run_id TEXT,
+    status TEXT  -- 'pending', 'valid', 'invalid'
+)
+```
+
+## Pipeline Results After Multiple Runs
+
+The following screenshots demonstrate the pipeline behavior after several execution runs, showing how data quality management works across all three tables:
+
+### 1. Control Table - Pipeline Run Tracking
+*Shows the status tracking for all processed records*
+
+![Control Table Results](images/03_table_control_table.png)
+
+**Key Observations:**
+- Each record has a unique ID and run_id combination
+- Status values show the lifecycle: 'valid' for passed tests, 'invalid' for failed tests
+- Complete audit trail of all pipeline executions
+
+### 2. Raw Weather Data - Complete Data Storage  
+*Contains ALL data extracted from the API, regardless of quality*
+
+![Raw Weather Data Results](images/03_table_raw_weather_data.png)
+
+**Key Observations:**
+- ALL records from API calls are preserved
+- Contains both valid data (normal temperatures) and invalid data (e.g., temperature = -40°C)
+- Every record tagged with run_id for traceability
+- Serves as immutable source of truth for audit purposes
+
+### 3. Weather Data Cleansed - Quality-Validated Data Only
+*Contains ONLY records that passed all dbt quality tests*
+
+![Weather Data Cleansed Results](images/03_weather_data_cleansed.png)
+
+**Key Observations:**
+- ONLY valid records that passed temperature range tests (-20°C to 80°C)
+- Invalid records (like temperature = -40°C) are automatically removed
+- Clean, reliable dataset ready for analytics and reporting
+- Maintains referential integrity with raw data through ID field
+
+### Data Quality Validation in Action
+
+The screenshots demonstrate the pipeline's quality control effectiveness:
+
+1. **Raw Layer**: Record with temperature = -40°C is stored (preserving all data)
+2. **Control Layer**: Same record marked as 'invalid' after failing temperature range test  
+3. **Cleansed Layer**: Invalid record is excluded, ensuring only quality data for analytics
+
+This multi-layered approach ensures **zero data loss** while maintaining **high data quality** for downstream analytics.
+
+
+
+## Data Quality Testing
+
+The pipeline implements comprehensive data quality checks:
+
+### Built-in dbt Tests
+- **Uniqueness**: Ensures no duplicate records per run
+- **Not Null**: Validates required fields
+- **Referential Integrity**: Maintains relationships between tables
+
+### Custom Tests
+- **Temperature Range**: Validates temperatures between -20°C and 80°C
+- **Wind Direction**: Ensures valid compass directions (N, NE, E, SE, S, SW, W, NW, etc.)
+
+### Test Execution
+Tests run automatically after each transformation. Failed tests trigger:
+1. Status update to 'invalid' in control table
+2. Automatic cleanup of processed data
+3. Pipeline failure notification
+
+## Monitoring and Alerting
+
+### Pipeline Status Tracking
+- **Control Table**: Tracks each run with unique identifiers
+- **Status Updates**: Automatic status management (pending → valid/invalid)
+- **Run Isolation**: Failed runs don't affect successful data
+
+### Error Handling
+```python
+# Airflow task dependencies with error handling
+wait_for_api >> ingest_data >> dbt_transform_data >> dbt_test >> [
+    update_status_valid,    # Success path
+    update_status_invalid,  # Failure path
+    cleanup_failed          # Cleanup path
+]
+```
+
+## Key Features
+
+### Complete Data Lineage & Audit Trail
+- **Raw Data Preservation**: Every API response stored permanently in `raw_weather_data`
+- **Quality Tracking**: Control table maintains status for every single record
+- **Run Isolation**: Each pipeline execution tracked with unique run IDs
+- **Data Recovery**: Invalid data can be reprocessed from raw layer if business rules change
+
+
+
+### Fault Tolerance & Data Quality
+- **Never Lose Data**: Failed quality checks don't delete raw records
+- **Selective Processing**: Only validated data used for analytics
+- **Status Transparency**: Always know why records were accepted/rejected
+- **Reprocessing Capability**: Can rebuild cleansed layer from raw data anytime
+
+
+
+## Setup Instructions
+
+### Prerequisites
 - Docker and Docker Compose
-- Linux environment (tested on WSL)
-- WeatherStack API key (free tier available)
-- 4GB+ RAM recommended
+- WeatherStack API key
 
-## 🔧 Installation & Setup
+### Installation
 
-### 1. Clone the Repository
+1. **Clone the repository**
 ```bash
-git clone <your-repo-url>
+git clone <repository-url>
 cd weather-data-project
 ```
 
-### 2. Environment Configuration
+2. **Configure API Key**
 Update the API key in `api-request/insert_record.py`:
 ```python
 api_key = "your_weatherstack_api_key_here"
 ```
 
-### 3. Start the Pipeline
+3. **Start the services**
 ```bash
-# Start all services
 docker-compose up -d
-
-# Check container status
-docker-compose ps
+docker-compose exec db psql -U db_user -d db
 ```
 
-### 4. Initialize Airflow
-The pipeline will automatically:
-- Initialize PostgreSQL database
-- Set up Airflow with standalone mode
-- Create necessary schemas and tables
+4. **Access services**
+- Airflow UI: http://localhost:8000
+- PostgreSQL: localhost:5000
 
-### 5. Access Services
-- **Airflow UI**: http://localhost:8000
-- **PostgreSQL**: localhost:5000 (host:port)
-  - Database: `db`
-  - User: `db_user`
-  - Password: `db_password`
+### Service Configuration
 
-## 📊 Data Flow
+#### PostgreSQL
+- **Host**: localhost:5000
+- **Database**: db
+- **User**: db_user
+- **Password**: db_password
 
-### **1. Data Ingestion**
-- Airflow sensor checks WeatherStack API availability
-- Python script fetches current weather data for New York
-- Raw data inserted into `dev.raw_weather_data` table with run_id tracking
+#### Airflow
+- **Web UI**: http://localhost:8000
+- **Schedule**: Every 10 minutes
+- **DAG ID**: weather_api_orcherastrator
 
-### **2. Data Transformation (dbt)**
-- **Fact Layer**: `weather_data_cleansed`
-  - Deduplicates records using ROW_NUMBER()
-  - Converts timestamps to local timezone
-  - Filters to most recent record per city/time combination
 
-- **Mart Layer**: Aggregation models
-  - `city_avg_data`: Daily weather averages by city
-  - `country_avg_data`: Daily weather averages by country
 
-### **3. Data Quality Testing**
-- **Unique/Not Null**: Ensures data integrity
-- **Range Validation**: Temperature must be between -20°C and 80°C
-- **Accepted Values**: Wind direction validation against compass values
-- **Automatic Cleanup**: Failed test data is automatically removed
 
-## 🧪 Data Quality & Testing
 
-The pipeline implements comprehensive data quality checks:
-
-### **Built-in dbt Tests**
-```yaml
-tests:
-  - unique           # Ensures unique primary keys
-  - not_null         # Validates required fields
-  - accepted_values  # Validates wind direction values
-```
-
-### **Custom Tests**
-- **Temperature Range**: Custom macro validates realistic temperature values
-- **Run-time Cleanup**: Automatically removes data that fails quality tests
-
-## 🔄 Pipeline Schedule
-
-- **Frequency**: Every 45 minutes
-- **Catchup**: Disabled (only processes current runs)
-- **Retry Logic**: Built-in Airflow retry mechanisms
-- **Monitoring**: Airflow UI provides complete pipeline visibility
-
-## 📈 Usage Examples
-
-### **Query Daily City Averages**
-```sql
-SELECT city, day, avg_temperature, avg_humidity 
-FROM dev.city_avg_data 
-WHERE day >= CURRENT_DATE - INTERVAL '7 days';
-```
-
-### **Monitor Data Quality**
-```sql
-SELECT run_id, COUNT(*) as records 
-FROM dev.weather_data_cleansed 
-GROUP BY run_id 
-ORDER BY run_id DESC;
-```
-
-### **Check Raw vs Cleansed Data**
-```sql
--- Raw data count
-SELECT COUNT(*) FROM dev.raw_weather_data;
-
--- Cleansed data count (should be <= raw due to deduplication)
-SELECT COUNT(*) FROM dev.weather_data_cleansed;
-```
-
-## 🐳 Docker Services
-
-| Service | Container | Port | Purpose |
-|---------|-----------|------|---------|
-| PostgreSQL | `postgres_container` | 5000:5432 | Data storage |
-| Airflow | `airflow_container` | 8000:8080 | Orchestration |
-| dbt | `dbt_container` | - | Data transformation |
-
-## 🔍 Monitoring & Debugging
-
-### **Airflow UI**
-- Monitor DAG runs and task status
-- View logs for troubleshooting
-- Manual trigger capabilities
-
-### **Database Queries**
-```sql
--- Check latest data
-SELECT * FROM dev.weather_data_cleansed ORDER BY inserted_at DESC LIMIT 5;
-
--- Monitor pipeline runs
-SELECT run_id, COUNT(*), MAX(inserted_at) as last_run 
-FROM dev.raw_weather_data 
-GROUP BY run_id 
-ORDER BY last_run DESC;
-```
-
-### **dbt Commands**
-```bash
-# Run transformations
-docker exec dbt_container dbt run
-
-# Run tests
-docker exec dbt_container dbt test
-
-# Generate documentation
-docker exec dbt_container dbt docs generate
-```
-
-## 🔧 Customization Options
-
-### **Adding More Cities**
-Modify the API URL in `insert_record.py` to include multiple locations or make it configurable.
-
-### **Additional Weather Metrics**
-The WeatherStack API provides more data points (UV index, air quality) that can be easily added to the schema.
-
-### **Different Aggregations**
-Create new mart models for hourly, weekly, or monthly aggregations.
-
-### **Data Sources**
-Replace or supplement WeatherStack with other weather APIs or data sources.
-
-## 🚨 Troubleshooting
-
-### **Common Issues**
-
-**1. Container Startup Issues**
-```bash
-# Check container logs
-docker-compose logs [service_name]
-
-# Restart services
-docker-compose restart
-```
-
-**2. Database Connection Issues**
-- Verify PostgreSQL container is running
-- Check network connectivity between containers
-- Validate database credentials
-
-**3. dbt Test Failures**
-- Review temperature data for unrealistic values
-- Check wind direction values against accepted list
-- Examine duplicate records
-
-**4. API Issues**
-- Verify WeatherStack API key is valid
-- Check API rate limits
-- Monitor API response status codes
-
-## 📝 Development Notes
-
-- **Mock Data**: Test functions available for pipeline testing without API calls
-- **Run ID Tracking**: Each pipeline run is tracked for data lineage
-- **Timezone Handling**: Automatic conversion from UTC to local timezones
-- **Error Recovery**: Automatic cleanup of failed pipeline runs
-
-## 🎯 Future Enhancements
-
-- [ ] Multi-city data collection
-- [ ] Historical data backfilling
-- [ ] Real-time dashboards
-- [ ] Data retention policies
-- [ ] Additional weather APIs integration
-- [ ] Machine learning weather predictions
-- [ ] Alerting for extreme weather conditions
-
-## 📄 License
-
-This project is developed for educational and demonstration purposes.
-
----
-
-**Built with ❤️ using modern data engineering practices**
