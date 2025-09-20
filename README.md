@@ -3,6 +3,21 @@
 A robust, automated ETL pipeline that extracts weather data from the WeatherStack API, transforms it using dbt, and loads it into PostgreSQL. The entire pipeline is orchestrated with Apache Airflow and containerized with Docker.
 
 
+## Table of Contents
+
+- [Architecture Overview](#architecture-overview)
+- [Technologies Used](#technologies-used)
+- [Pipeline Workflow](#pipeline-workflow)
+- [Project Structure](#project-structure)
+- [Data Flow & Quality Management](#data-flow--quality-management)
+- [Data Models](#data-models)
+- [Database Schema & Results](#database-schema--results)
+- [Data Quality Testing & Record Lifecycle](#data-quality-testing--record-lifecycle)
+- [Key Features](#key-features)
+- [Setup Instructions](#setup-instructions)
+
+
+
 
 ## Architecture Overview
 
@@ -258,22 +273,7 @@ Tests run automatically after each transformation. Failed tests trigger:
 2. Automatic cleanup of processed data
 3. Pipeline failure notification
 
-## Monitoring and Alerting
 
-### Pipeline Status Tracking
-- **Control Table**: Tracks each run with unique identifiers
-- **Status Updates**: Automatic status management (pending → valid/invalid)
-- **Run Isolation**: Failed runs don't affect successful data
-
-### Error Handling
-```python
-# Airflow task dependencies with error handling
-wait_for_api >> ingest_data >> dbt_transform_data >> dbt_test >> [
-    update_status_valid,    # Success path
-    update_status_invalid,  # Failure path
-    cleanup_failed          # Cleanup path
-]
-```
 
 ## Key Features
 
