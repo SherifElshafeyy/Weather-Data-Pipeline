@@ -7,6 +7,7 @@ api_key = "34a137018d949b4c0372f3b1e578ab34"
 api_url = f"http://api.weatherstack.com/current?access_key={api_key}&query=New York"
 
 #function to test availability of api
+#used by wait_for_api task in DAG
 def is_api_available():
     """Check if API is available (used by PythonSensor)."""
     try:
@@ -40,7 +41,6 @@ def fetch_data():
 
 #connecting to db
 def connect_to_db():
-    """Connect to Postgres database."""
     print("Connecting to the postgres database")
     return psycopg2.connect(
         host="db",
@@ -50,7 +50,7 @@ def connect_to_db():
         password="db_password"
     )
 
-#create source table
+#create schema and source table
 def create_table(conn):
     """Create schema and table if not exists, with run_id column."""
     cursor = conn.cursor()
@@ -109,7 +109,8 @@ def insert_record(conn, data, run_id):
     print(f"Data successfully inserted with run_id={run_id}")
 
 
-#orcherastrator 
+ 
+#used by ingest_data task in DAG
 def main(run_id=None):
     """Orchestration function: fetch, create table, insert record."""
     try:
@@ -126,7 +127,8 @@ def main(run_id=None):
             print("Database connection closed.")
 
 
-
+#update status in control_table "valid" or "invalid"
+#used by update_status task in DAG
 def update_run_status(run_id, status):
     conn = connect_to_db()
     cursor = conn.cursor()
@@ -140,7 +142,7 @@ def update_run_status(run_id, status):
     print(f"Updated run_id={run_id} to status={status}")
 
 
-#cleaning up bad recprds from cleansed table in case dbt_test is succeded
+#cleaning up bad records from cleansed table in case dbt_test is succeded
 def cleanup_failed_run(run_id):
     """Delete cleansed rows for the current run_id if dbt tests fail."""
     try:
